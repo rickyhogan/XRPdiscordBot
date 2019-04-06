@@ -31,12 +31,10 @@ class DB_connection(object):
         variable.session.close()
 
 description = '''Interact with a public hosted DB on www.AnalyzeXRP.com, which holds Wallet keys and names linked to them.
-Also can make API calls such as get a wallet balance.'''
+Also can make API calls such as get a wallet balance'''
 bot = commands.Bot(command_prefix='?', description=description)
 
 token = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
-
-############################## Start up ######################
 
 @bot.event
 async def on_ready():
@@ -44,8 +42,6 @@ async def on_ready():
     print(bot.user.name)
     print(bot.user.id)
     print('------')
-
-############################# Validations ############
 
 @bot.event
 async def on_command_error(error, ctx):
@@ -74,9 +70,8 @@ def title_check(argument):
         return argument
     raise commands.BadArgument("Accepted titles are only 'service','ripple','user','exchange','account'")
     
-############################# DB commands #########################
-    
-@bot.command(pass_context=True)
+@bot.command(pass_context=True,brief='--Adds new ID to pub. key.',description="""Accepted title ='service','ripple','user','exchange','account'.
+             Example of Nickname = 'escrow'.""")
 async def add(ctx, title: title_check, nickname, publickey: publickey_check):
     
     discord_memo = 'Discord member %s' % ctx.message.author
@@ -90,13 +85,13 @@ async def add(ctx, title: title_check, nickname, publickey: publickey_check):
             DB.session.add_all([new_wallet])
             await bot.say(f"Status: ADDED\nTitle: {title}\nNickname: {nickname}\nPublickey: {publickey}\nMember: {ctx.message.author}")
         else:
-            with DB_connection() as DB:
-                wallet = DB.session.query(NamedWallets)
-                wallet = wallet.filter(NamedWallets.PublicKey == publickey)
-                for a in wallet:
-                    await bot.say("Public Key already exists in DB as :\nTitle: %s\nNickname: %s\nPublickey: %s\nMemo: %s" % (a.WalletTitle,a.WalletNick,a.PublicKey,a.Memo))
+            wallet = DB.session.query(NamedWallets)
+            wallet = wallet.filter(NamedWallets.PublicKey == publickey)
+            for a in wallet:
+                await bot.say("Public Key already exists in DB as :\nTitle: %s\nNickname: %s\nPublickey: %s\nMemo: %s" % (a.WalletTitle,a.WalletNick,a.PublicKey,a.Memo))
 
-@bot.command(pass_context=True)
+@bot.command(pass_context=True,brief='--Updates ID to existing pub. key.',description="""Accepted title ='service','ripple','user','exchange','account'.
+             Example of Nickname = 'escrow'.""")
 async def update(ctx, title: title_check, nickname, publickey: publickey_check):
     
     discord_memo = 'Discord member %s' % ctx.message.author
@@ -113,18 +108,17 @@ async def update(ctx, title: title_check, nickname, publickey: publickey_check):
                               NW.PublicKey:publickey,NW.Memo:discord_memo})
             await bot.say(f"Status: UPDATED\nTitle: {title}\nNickname: {nickname}\nPublickey: {publickey}\nMember: {ctx.message.author}")
 
-@bot.command(pass_context=True)
+@bot.command(pass_context=True,brief="--Counts all Wallet ID's in DB.",description="Totals all Wallets in DB")
 async def count(ctx):
     with DB_connection() as DB:
         new_wallet = DB.session.query(func.count(NamedWallets.Id))
         for a in new_wallet:
             await bot.say(f"Total wallets stored in DB: %s" % (a))
 
-@bot.command(pass_context=True)
+@bot.command(pass_context=True,brief='--Finds attached pub. key.',description="""Input Pub key to display all information associated with wallet
+inside DB""")
 async def find(ctx, publickey: publickey_check):
     with DB_connection() as DB:
-        new_wallet = DB.session.query(NamedWallets)
-        new_wallet = new_wallet.filter(NamedWallets.PublicKey == publickey)
         wallets = DB.session.query(NamedWallets).filter(NamedWallets.PublicKey == publickey).first()
         if wallets is None:
             await bot.say("No existing publickey found in DB. Use ?add to add a publickey") 
@@ -134,14 +128,14 @@ async def find(ctx, publickey: publickey_check):
             for a in wallet:
                 await bot.say(f"Title: %s\nNickname: %s\nPublickey: %s\nMemo: %s" % (a.WalletTitle,a.WalletNick,a.PublicKey,a.Memo))
 
-################################## API commands ############################################
+##############################################################################
 
 from ripple_api import RippleRPCClient
 
 rpc = RippleRPCClient('http://s1.ripple.com:51234/', username='<username>',
                       password='<password>')
 
-@bot.command(pass_context=True)
+@bot.command(pass_context=True,brief='--Display balance of pubkey.',description="""Input valid pub key to display balance""")
 async def API_balance(ctx, publickey: publickey_check):
     account_info = rpc.account_info(publickey)
     balance = account_info['account_data']['Balance']
